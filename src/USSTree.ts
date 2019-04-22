@@ -133,7 +133,7 @@ export class USSTree implements vscode.TreeDataProvider<ZoweUSSNode> {
             this.mFavoriteSession,
             node.getSession(),
             node.mParent.fullPath,
-            true);
+            node.getSessionNode().mLabel);
         if (!this.mFavorites.find((tempNode) => tempNode.mLabel === temp.mLabel)) {
             this.mFavorites.push(temp);
             this.refresh();
