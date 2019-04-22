@@ -25,6 +25,7 @@ export class ZoweUSSNode extends vscode.TreeItem {
     public fullPath = "";
     public dirty = true;
     public children: ZoweUSSNode[] = [];
+    public isFavorite = false;
 
     /**
      * Creates an instance of ZoweUSSNode
@@ -34,9 +35,14 @@ export class ZoweUSSNode extends vscode.TreeItem {
      * @param {ZoweUSSNode} mParent - The parent node
      * @param {Session} session
      * @param {String} parentPath - The file path of the parent on the server
+     * @param {String} mIsFavorite - Indicate if this file been added to favorites
      */
-    constructor(public mLabel: string, public mCollapsibleState: vscode.TreeItemCollapsibleState,
-                public mParent: ZoweUSSNode, private session: Session, private parentPath: string) {
+    constructor(public mLabel: string,
+                public mCollapsibleState: vscode.TreeItemCollapsibleState,
+                public mParent: ZoweUSSNode,
+                private session: Session,
+                private parentPath: string,
+                private mIsFavorite?: boolean) {
         super(mLabel, mCollapsibleState);
         if (mCollapsibleState !== vscode.TreeItemCollapsibleState.None) {
             this.contextValue = "directory";
@@ -45,6 +51,7 @@ export class ZoweUSSNode extends vscode.TreeItem {
         }
         if (parentPath)
             this.fullPath = this.tooltip = parentPath+'/'+mLabel;
+        this.isFavorite = mIsFavorite || false;
     }
 
     /**
@@ -64,12 +71,6 @@ export class ZoweUSSNode extends vscode.TreeItem {
         if (!this.mLabel) {
             vscode.window.showErrorMessage("Invalid node");
             throw Error("Invalid node");
-        }
-
-        // Check if node is a favorite
-        let label = this.mLabel.trim();
-        if (this.mLabel.startsWith("[")) {
-            label = this.mLabel.substring(this.mLabel.indexOf(":") + 1).trim();
         }
 
         // Gets the directories from the fullPath and displays any thrown errors

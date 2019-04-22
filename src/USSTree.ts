@@ -128,18 +128,18 @@ export class USSTree implements vscode.TreeDataProvider<ZoweUSSNode> {
      */
     public async addUSSFavorite(node: ZoweUSSNode) {
         let temp: ZoweUSSNode;
-        temp = new ZoweUSSNode("[" + node.getSessionNode().mLabel + "]: " + node.label, node.collapsibleState,
-            this.mFavoriteSession, node.getSession(), "");
-
-        temp.contextValue += "f";
-
-        if (!this.mFavorites.find((tempNode) =>
-            (tempNode.mLabel === temp.mLabel) && (tempNode.contextValue === temp.contextValue)
-        )) {
-        this.mFavorites.push(temp);
-        this.refresh();
-        await this.updateFavorites();
+        temp = new ZoweUSSNode(node.label,
+            node.collapsibleState,
+            this.mFavoriteSession,
+            node.getSession(),
+            node.mParent.fullPath,
+            true);
+        if (!this.mFavorites.find((tempNode) => tempNode.mLabel === temp.mLabel)) {
+            this.mFavorites.push(temp);
+            this.refresh();
+            await this.updateFavorites();
         }
+
     }
 
     public async updateFavorites() {
