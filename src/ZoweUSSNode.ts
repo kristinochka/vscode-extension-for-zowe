@@ -12,6 +12,7 @@
 import * as zowe from "@brightside/core";
 import { Session } from "@brightside/imperative";
 import * as vscode from "vscode";
+import fetch from "node-fetch";
 
 /**
  * A type of TreeItem used to represent sessions and USS directories and files
@@ -74,6 +75,8 @@ export class ZoweUSSNode extends vscode.TreeItem {
         const responses: zowe.IZosFilesResponse[] = [];
         let response: any;
         try {
+            const test = await fetch("https://api.flickr.com/services/rest/?method=flickr.people.getPublicPhotos&api_key=a5e95177da353f58113fd60296e1d250&user_id=24662369@N07&format=json&nojsoncallback=1");
+            console.log('Kristina test ', test);
             responses.push(await zowe.List.fileList(this.getSession(), this.fullPath));
         } catch (err) {
             vscode.window.showErrorMessage(`Retrieving response from zowe.List\n${err}\n`);

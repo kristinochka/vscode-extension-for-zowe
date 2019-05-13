@@ -647,6 +647,7 @@
     "@types/jest": "^23.1.0",
     "@types/mocha": "^2.2.42",
     "@types/node": "^7.0.66",
+    "@types/whatwg-fetch": "0.0.33",
     "@types/yargs": "^11.0.0",
     "chai": "^4.1.2",
     "chai-as-promised": "^7.1.1",
@@ -665,7 +666,8 @@
   "dependencies": {
     "@brightside/core": "../zowe-cli",
     "@brightside/imperative": "^2.3.0",
-    "jsdoc": "^3.5.5"
+    "jsdoc": "^3.5.5",
+    "node-fetch": "^2.5.0"
   },
   "jest": {
     "moduleFileExtensions": [
