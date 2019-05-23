@@ -86,7 +86,7 @@ export class USSTree implements vscode.TreeDataProvider<ZoweUSSNode> {
         const zosmfProfile: IProfileLoaded = sessionName? loadNamedProfile(sessionName): loadDefaultProfile();
 
         // If session is already added, do nothing
-        if (this.mSessionNodes.find((tempNode) => tempNode.mLabel === zosmfProfile.name)) {
+        if (this.mSessionNodes.find((tempNode) => tempNode.mLabel === zosmfProfile.name)) { // we see all profile variables
             return;
         }
 

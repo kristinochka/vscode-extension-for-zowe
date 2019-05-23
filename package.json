@@ -662,9 +662,10 @@
     "vscode": "^1.1.30"
   },
   "dependencies": {
-    "@brightside/core": "^2.15.0",
+    "@brightside/core": "../zowe-cli",
     "@brightside/imperative": "^2.3.0",
-    "jsdoc": "^3.5.5"
+    "jsdoc": "^3.5.5",
+    "@brightside/zowe-cli-sample-plugin": "../zowe-tutorial/zowe-cli-sample-plugin"
   },
   "jest": {
     "moduleFileExtensions": [

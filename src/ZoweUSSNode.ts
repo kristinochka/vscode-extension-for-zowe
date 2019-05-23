@@ -10,6 +10,7 @@
 */
 
 import * as zowe from "@brightside/core";
+import * as zowePlugin from "@brightside/zowe-cli-sample-plugin";
 import { Session } from "@brightside/imperative";
 import * as vscode from "vscode";
 
@@ -70,11 +71,20 @@ export class ZoweUSSNode extends vscode.TreeItem {
             throw Error("Invalid node");
         }
 
+        const session = this.getSession();
+        const profileType = session.ISession.profileType;
+        console.log("Here is the profile type", profileType);
+
         // Gets the directories from the fullPath and displays any thrown errors
         const responses: zowe.IZosFilesResponse[] = [];
-        let response: any;
         try {
-            responses.push(await zowe.List.fileList(this.getSession(), this.fullPath));
+            let files;
+            if (profileType === "zowe-rest") {
+                files = await zowePlugin.UssFiles.listFiles(this.getSession(), this.fullPath);
+            } else {
+                files = await zowe.List.fileList(this.getSession(), this.fullPath);
+            }
+            responses.push(files);
         } catch (err) {
             vscode.window.showErrorMessage(`Retrieving response from zowe.List\n${err}\n`);
             throw Error(`Retrieving response from zowe.List\n${err}\n`);
@@ -90,10 +100,10 @@ export class ZoweUSSNode extends vscode.TreeItem {
             }
 
             // Loops through all the returned file references members and creates nodes for them
-            for (const item of response.apiResponse.items) {
+            for (const item of response.apiResponse && response.apiResponse.items) {
                 if (item.name !== '.' && item.name !== '..') {
                     // Creates a ZoweUSSNode for a directory
-                    if (item.mode.startsWith('d')) {
+                    if (item.mode && item.mode.startsWith('d') || item.type === 'DIRECTORY') {
                         const temp = new ZoweUSSNode(item.name, vscode.TreeItemCollapsibleState.Collapsed, this, null, this.fullPath);
                         elementChildren[temp.label] = temp;
                     } else {
