@@ -13,6 +13,7 @@ import * as zowe from "@brightside/core";
 import * as zowePlugin from "@brightside/zowe-cli-sample-plugin";
 import { Session } from "@brightside/imperative";
 import * as vscode from "vscode";
+import { listFiles } from "./api/USS";
 
 /**
  * A type of TreeItem used to represent sessions and USS directories and files
@@ -78,12 +79,7 @@ export class ZoweUSSNode extends vscode.TreeItem {
         // Gets the directories from the fullPath and displays any thrown errors
         const responses: zowe.IZosFilesResponse[] = [];
         try {
-            let files;
-            if (profileType === "zowe-rest") {
-                files = await zowePlugin.UssFiles.listFiles(this.getSession(), this.fullPath);
-            } else {
-                files = await zowe.List.fileList(this.getSession(), this.fullPath);
-            }
+            const files = await listFiles(this.getSession(), this.fullPath);
             responses.push(files);
         } catch (err) {
             vscode.window.showErrorMessage(`Retrieving response from zowe.List\n${err}\n`);
