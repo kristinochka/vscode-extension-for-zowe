@@ -821,13 +821,29 @@ export async function enterUSSPattern(node: ZoweUSSNode, ussFileProvider: USSTre
     // TODO figure out why a label change is needed to refresh the treeview,
     // instead of changing the collapsible state
     // change label so the treeview updates
-    node.label = node.label + " ";
-    node.label.trim();
+    // node.label = node.label + " ";
+    // node.label.trim();
     // Sanitization: Replace multiple preceding forward slashes with just one forward slash
-    node.tooltip = node.fullPath = remotepath.replace(/\/\/+/, "/");
+    // node.tooltip = node.fullPath = remotepath.replace(/\/\/+/, "/");
     node.collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
-    node.dirty = true;
-    ussFileProvider.refresh();
+    // add new node here
+    // * @param {string} mLabel - Displayed in the [TreeView]
+    // * @param {vscode.TreeItemCollapsibleState} mCollapsibleState - file/directory
+    // * @param {ZoweUSSNode} mParent - The parent node
+    // * @param {Session} session
+    // * @param {String} parentPath - The file path of the parent on the server
+    // * @param {String} mProfileName - Profile to which the node belongs to
+    const parentRootNode = new ZoweUSSNode(
+        node.fullPath,
+        vscode.TreeItemCollapsibleState.Expanded,
+        node, // mParent - The parent node
+        node.getSession(), // session
+        "" // parentPath - The file path of the parent on the server
+    );
+    // node.dirty = true;
+    parentRootNode.dirty = true;
+    ussFileProvider.mSessionNodes.push(parentRootNode);
+    ussFileProvider.refresh(); // push new node here
 }
 
 /**

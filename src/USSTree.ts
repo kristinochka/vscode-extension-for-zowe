@@ -89,7 +89,7 @@ export class USSTree implements vscode.TreeDataProvider<ZoweUSSNode> {
      *
      * @param {string} [sessionName] - optional; loads default profile if not passed
      */
-    public async addSession(sessionName?: string) {
+    public async addSession(sessionName?: string) { // here?
         // Loads profile associated with passed sessionName, default if none passed
         const zosmfProfile: IProfileLoaded = sessionName? loadNamedProfile(sessionName): loadDefaultProfile();
 
@@ -105,6 +105,10 @@ export class USSTree implements vscode.TreeDataProvider<ZoweUSSNode> {
         const node = new ZoweUSSNode(zosmfProfile.name, vscode.TreeItemCollapsibleState.Collapsed, null, session, "");
         node.contextValue = "uss_session";
         this.mSessionNodes.push(node);
+        // create path root
+        // const parentPathNode = new ZoweUSSNode(zosmfProfile.name, vscode.TreeItemCollapsibleState.Collapsed, null, session, "");
+        // node.contextValue = "uss_session";
+        // this.mSessionNodes.push(node);
         this.refresh();
     }
 
