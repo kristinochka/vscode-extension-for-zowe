@@ -9,29 +9,42 @@
 *                                                                                 *
 */
 
+jest.mock("vscode");
 jest.mock("child_process");
+jest.mock("@brightside/imperative");
+import * as vscode from "vscode";
 import * as child_process from "child_process";
+import { Logger } from "@brightside/imperative";
 
 import { loadNamedProfile, loadAllProfiles, loadDefaultProfile } from "../src/ProfileLoader";
 
+const showInformationMessage = jest.fn();
+Object.defineProperty(vscode.window, "showInformationMessage", {value: showInformationMessage});
 
 describe("ProfileLoader", ()=>{
+    // Mocking log.debug
+    const log = new Logger(undefined);
+    Object.defineProperty(log, "debug", {
+        value: jest.fn()
+    });
+    const mockDebug = jest.spyOn(log, "debug");
 
+    // Happy path profiles
     const profileOne = {name: "profile1", profile: {}, type: "zosmf"};
     const profileTwo = {name: "profile2", profile: {}, type: "zosmf"};
 
     (child_process.spawnSync as any) = jest.fn((program: string, args: string[], options: any)=>{
-        
-        const createFakeChildProcess =(status: number, stdout:string, stderr: string) =>{
+
+        const createFakeChildProcess =(status: number, stdout: string, stderr: string) =>{
             return {
                 status,
                 stdout: {
-                    toString : jest.fn(()=>{ 
+                    toString : jest.fn(()=> {
                         return stdout;
                     })
                 },
                 stderr: {
-                    toString : jest.fn(()=>{ 
+                    toString : jest.fn(()=>{
                         return stderr;
                     })
                 },
@@ -41,10 +54,10 @@ describe("ProfileLoader", ()=>{
         if (args[0].indexOf("getAllProfiles") >=0){
             return createFakeChildProcess(0, JSON.stringify([profileOne, profileTwo]), "");
         } else {
-            // load default profile            
+            // load default profile
             return createFakeChildProcess(0, JSON.stringify(profileOne), "");
         }
-    })
+    });
 
     it("should return a named profile", ()=>{
 
@@ -59,7 +72,27 @@ describe("ProfileLoader", ()=>{
 
     it("should return a default profile", ()=>{
 
-        const loadedProfile = loadDefaultProfile();
+        const loadedProfile = loadDefaultProfile(log);
         expect(loadedProfile).toEqual(profileOne);
-     });
+    });
+
+    it("should display an information message and log a debug message if no default profile is found", ()=> {
+        showInformationMessage.mockReset();
+        mockDebug.mockReset();
+        // Create bad profile
+        (child_process.spawnSync as any) = jest.fn((program: string, args: string[], options: any)=>{
+            return {
+                status: 0,
+                stdout: "",
+                stderr: "Error text"
+            };
+        });
+        // Expect loadDefaultProfile to throw an error
+        expect(()=> {
+            loadDefaultProfile(log);
+        }).toThrow();
+        // Test that the information and debug messages were called
+        expect(showInformationMessage.mock.calls.length).toBe(1);
+        expect(mockDebug.mock.calls.length).toBe(1);
+    });
 });

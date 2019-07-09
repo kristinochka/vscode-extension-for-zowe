@@ -15,9 +15,10 @@ import * as vscode from "vscode";
 import * as zowe from "@brightside/core";
 import * as fs from "fs";
 import * as utils from "../utils";
-import * as nls from 'vscode-nls';
-const localize = nls.loadMessageBundle();
+import * as nls from "vscode-nls";
+const localize = nls.config({ messageFormat: nls.MessageFormat.file })();
 
+import * as path from "path";
 /**
  * Prompts the user for a path, and populates the [TreeView]{@link vscode.TreeView} based on the path
  *
@@ -25,33 +26,48 @@ const localize = nls.loadMessageBundle();
  * @param {ussTree} ussFileProvider - Current ussTree used to populate the TreeView
  * @returns {Promise<void>}
  */
-export async function createUSSNode(node: ZoweUSSNode, ussFileProvider: USSTree, nodeType: string) {
+export async function createUSSNode(node: ZoweUSSNode, ussFileProvider: USSTree, nodeType: string, isTopLevel?: boolean) {
     const name = await vscode.window.showInputBox({placeHolder:
-        localize("ussNodeActions.createUSSNode.name.placeHolder.text", "Name of file or directory")});
+        localize("createUSSNode.name", "Name of file or directory")});
     if (name) {
         try {
             const filePath = `${node.fullPath}/${name}`;
             await zowe.Create.uss(node.getSession(), filePath, nodeType);
-            ussFileProvider.refresh();
+            if (isTopLevel) {
+                refreshAllUSS(ussFileProvider);
+            } else {
+                ussFileProvider.refresh();
+            }
         } catch (err) {
             vscode.window.showErrorMessage(
-                localize("ussNodeActions.createUSSNode.error.message.create.text", "Unable to create node: ") + err.message);
+                localize("createUSSNode.error.create", "Unable to create node: ") + err.message);
             throw (err);
         }
     }
+}
+
+export async function createUSSNodeDialog(node: ZoweUSSNode, ussFileProvider: USSTree) {
+    const quickPickOptions: vscode.QuickPickOptions = {
+        placeHolder: `What would you like to create at ${node.fullPath}?`,
+        ignoreFocusOut: true,
+        canPickMany: false
+    };
+    const type = await vscode.window.showQuickPick(["Directory", "File"], quickPickOptions);
+    const isTopLevel = true;
+    createUSSNode(node, ussFileProvider, type, isTopLevel);
 }
 
 export async function deleteUSSNode(node: ZoweUSSNode, ussFileProvider: USSTree, filePath: string) {
     // handle zosmf api issue with file paths
     const nodePath = node.fullPath.startsWith("/") ?  node.fullPath.substring(1) :  node.fullPath;
     const quickPickOptions: vscode.QuickPickOptions = {
-        placeHolder: localize("ussNodeActions.deleteUSSNode.quickPickOption.placeHolder.text", "Are you sure you want to delete ") + node.label,
+        placeHolder: localize("deleteUSSNode.quickPickOption", "Are you sure you want to delete ") + node.label,
         ignoreFocusOut: true,
         canPickMany: false
     };
-    if (await vscode.window.showQuickPick([localize("ussNodeActions.deleteUSSNode.showQuickPick.yes.text","Yes"),
-                                           localize("ussNodeActions.deleteUSSNode.showQuickPick.no.text", "No")],
-                                           quickPickOptions) !== localize("ussNodeActions.deleteUSSNode.showQuickPick.yes.text","Yes"))
+    if (await vscode.window.showQuickPick([localize("deleteUSSNode.showQuickPick.yes","Yes"),
+                                           localize("deleteUSSNode.showQuickPick.no", "No")],
+                                           quickPickOptions) !== localize("deleteUSSNode.showQuickPick.yes","Yes"))
     {
         return;
     }
@@ -61,13 +77,17 @@ export async function deleteUSSNode(node: ZoweUSSNode, ussFileProvider: USSTree,
         ussFileProvider.refresh();
         deleteFromDisk(node, filePath);
     } catch (err) {
-        vscode.window.showErrorMessage(localize("ussNodeActions.deleteUSSNode.error.message.node.text", "Unable to delete node: ") + err.message);
+        vscode.window.showErrorMessage(localize("deleteUSSNode.error.node", "Unable to delete node: ") + err.message);
         throw (err);
     }
+
+    // Remove node from the USS Favorites tree
+    ussFileProvider.removeUSSFavorite(node);
+    ussFileProvider.refresh();
 }
 
 /**
- * Refreshes treeView MOVE FUNCTION FROM EXTENSION!
+ * Refreshes treeView
  *
  * @param {USSTree} ussFileProvider
  */
@@ -92,7 +112,7 @@ export async function renameUSSNode(node: ZoweUSSNode, ussFileProvider: USSTree,
             ussFileProvider.refresh();
         }
     } catch (err) {
-        vscode.window.showErrorMessage(localize("ussNodeActions.renameUSSNode.error.message.text", "Unable to rename node: ") + err.message);
+        vscode.window.showErrorMessage(localize("renameUSSNode.error", "Unable to rename node: ") + err.message);
         throw (err);
     }
 }
@@ -108,12 +128,13 @@ export async function deleteFromDisk(node: ZoweUSSNode, filePath: string) {
                 fs.unlinkSync(filePath);
             }
         }
+// tslint:disable-next-line: no-empty
         catch (err) {}
 }
 
 export async function initializeUSSFavorites(ussFileProvider: USSTree) {
     const lines: string[] = vscode.workspace.getConfiguration("Zowe-USS-Persistent-Favorites").get("favorites");
-    lines.forEach(async line => {
+    lines.forEach(async (line) => {
         const profileName = line.substring(1, line.lastIndexOf("]"));
         const nodeName = (line.substring(line.indexOf(":") + 1, line.indexOf("{"))).trim();
         const session = await utils.getSession(profileName);
@@ -139,9 +160,37 @@ export async function initializeUSSFavorites(ussFileProvider: USSTree) {
                 profileName
             );
             node.command = {command: "zowe.uss.ZoweUSSNode.open",
-                            title: localize("ussNodeActions.initializeUSSFavorites.lines.title", "Open"), arguments: [node]};
+                            title: localize("initializeUSSFavorites.lines.title", "Open"), arguments: [node]};
         }
         node.contextValue += "f";
         ussFileProvider.mFavorites.push(node);
     });
+}
+
+export async function uploadDialog(node: ZoweUSSNode, ussFileProvider: USSTree) {
+    const fileOpenOptions = {
+        canSelectFiles: true,
+        openLabel: "Upload Files",
+        canSelectMany: true
+     };
+
+    const value = await vscode.window.showOpenDialog(fileOpenOptions);
+
+    await Promise.all(
+        value.map(async (item) => {
+            const doc = await vscode.workspace.openTextDocument(item);
+            await uploadFile(node, doc);
+        }
+     ));
+    ussFileProvider.refresh();
+}
+
+export async function uploadFile(node: ZoweUSSNode, doc: vscode.TextDocument) {
+    try {
+        const localFileName = path.parse(doc.fileName).base;
+        const ussName = `${node.fullPath}/${localFileName}`;
+        await zowe.Upload.fileToUSSFile(node.getSession(), doc.fileName, ussName);
+    } catch (e) {
+        vscode.window.showErrorMessage(e.message);
+    }
 }

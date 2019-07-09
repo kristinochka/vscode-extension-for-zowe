@@ -18,11 +18,11 @@ jest.mock("../src/ProfileLoader");
 import * as vscode from "vscode";
 import { DatasetTree } from "../src/DatasetTree";
 import { ZoweNode } from "../src/ZoweNode";
-import { Session } from "@brightside/imperative";
+import { Session, Logger } from "@brightside/imperative";
 
 import * as profileLoader from "../src/ProfileLoader";
 
-describe("DatasetTree Unit Tests", async () => {
+describe("DatasetTree Unit Tests", () => {
     // Globals
     const session = new Session({
         user: "fake",
@@ -40,7 +40,7 @@ describe("DatasetTree Unit Tests", async () => {
     });
     Object.defineProperty(profileLoader, "loadAllProfiles", {
         value: jest.fn(() => {
-            return [{ name: "profile1" }, { name: "profile2" }]
+            return [{ name: "profile1" }, { name: "profile2" }];
         })
     });
     Object.defineProperty(profileLoader, "loadDefaultProfile", {
@@ -204,9 +204,11 @@ describe("DatasetTree Unit Tests", async () => {
      * Test the addSession command
      *************************************************************************************************************/
     it("Test the addSession command ", async () => {
-        testTree.addSession();
+        const log = new Logger(undefined);
 
-        testTree.addSession("fake");
+        testTree.addSession(log);
+
+        testTree.addSession(log, "fake");
     });
 
     /*************************************************************************************************************

@@ -11,6 +11,7 @@
 
 // tslint:disable:no-magic-numbers
 import * as zowe from "@brightside/core";
+import { Logger } from "@brightside/imperative";
 // tslint:disable-next-line:no-implicit-dependencies
 import * as expect from "expect";
 import * as vscode from "vscode";
@@ -159,12 +160,13 @@ describe("DatasetTree Integration Tests", async () => {
      *************************************************************************************************************/
     it("Tests the addSession() function by adding a default, deleting, then adding a passed session", async () => {
         const len = testTree.mSessionNodes.length;
-        await testTree.addSession();
+        const log = new Logger(undefined);
+        await testTree.addSession(log);
         expect(testTree.mSessionNodes.length).toEqual(len + 1);
         testTree.deleteSession(testTree.mSessionNodes[len]);
         await testTree.addSession(testConst.profile.name);
         expect(testTree.mSessionNodes.length).toEqual(len + 1);
-    });
+    }).timeout(TIMEOUT);
 
     describe("addFavorite()", () => {
         it("should add the selected data set to the treeView", async () => {

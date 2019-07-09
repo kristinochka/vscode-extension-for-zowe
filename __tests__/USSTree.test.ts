@@ -15,14 +15,14 @@ jest.mock("@brightside/imperative");
 jest.mock("@brightside/core/lib/zosfiles/src/api/methods/list/doc/IListOptions");
 jest.mock("Session");
 jest.mock("../src/ProfileLoader");
-import { Session } from "@brightside/imperative";
+import { Session, Logger } from "@brightside/imperative";
 import * as vscode from "vscode";
 import { USSTree } from "../src/USSTree";
 import { ZoweUSSNode } from "../src/ZoweUSSNode";
 
 import * as profileLoader from "../src/ProfileLoader";
 
-describe("Unit Tests (Jest)", async () => {
+describe("Unit Tests (Jest)", () => {
     // Globals
     const session = new Session({
         user: "fake",
@@ -39,7 +39,7 @@ describe("Unit Tests (Jest)", async () => {
     });
     Object.defineProperty(profileLoader, "loadAllProfiles", {
         value: jest.fn(() => {
-            return [{ name: "profile1" }, { name: "profile2" }]
+            return [{ name: "profile1" }, { name: "profile2" }];
         })
     });
     Object.defineProperty(profileLoader, "loadDefaultProfile", {
@@ -196,7 +196,7 @@ describe("Unit Tests (Jest)", async () => {
 
         // Checking that the rootChildren are what they are expected to be
         expect(dirChildren[1].mLabel).toEqual(sampleChildren[0].mLabel);
-        //expect(dirChildren[1].command).toEqual("zowe.uss.ZoweUSSNode.open");
+        // expect(dirChildren[1].command).toEqual("zowe.uss.ZoweUSSNode.open");
     });
 
     /*************************************************************************************************************
@@ -210,9 +210,11 @@ describe("Unit Tests (Jest)", async () => {
      * Test the addSession command
      *************************************************************************************************************/
     it("Test the addSession command ", async () => {
-        testTree.addSession();
+        const log = new Logger(undefined);
 
-        testTree.addSession("fake");
+        testTree.addSession(log);
+
+        testTree.addSession(log, "fake");
     });
 
     /*************************************************************************************************************
@@ -224,7 +226,7 @@ describe("Unit Tests (Jest)", async () => {
             testTree.mSessionNodes[1], null, "/");
         const childFile = new ZoweUSSNode("child", vscode.TreeItemCollapsibleState.Collapsed,
             parentDir, null, "/parent");
-        
+
         // Check adding directory
         await testTree.addUSSFavorite(parentDir);
         // Check adding duplicates

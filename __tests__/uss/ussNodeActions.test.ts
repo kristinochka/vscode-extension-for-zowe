@@ -13,7 +13,6 @@ import * as vscode from "vscode";
 import { ZoweUSSNode } from "../../src/ZoweUSSNode";
 import * as brtimperative from "@brightside/imperative";
 import * as brightside from "@brightside/core";
-import { createUSSNode, deleteUSSNode, renameUSSNode } from "../../src/uss/ussNodeActions";
 import * as ussNodeActions from "../../src/uss/ussNodeActions";
 import * as utils from "../../src/utils";
 
@@ -26,22 +25,25 @@ const renameUSSFile = jest.fn();
 const mockAddUSSSession = jest.fn();
 const mockUSSRefresh = jest.fn();
 const mockGetUSSChildren = jest.fn();
+const mockRemoveUSSFavorite = jest.fn();
 const showInputBox = jest.fn();
 const showErrorMessage = jest.fn();
 const showQuickPick = jest.fn();
 const getConfiguration = jest.fn();
+const showOpenDialog = jest.fn();
+const openTextDocument = jest.fn();
 
 function getUSSNode() {
-    const ussNode = new ZoweUSSNode("usstest", vscode.TreeItemCollapsibleState.Expanded, null, session, null);
+    const ussNode1 = new ZoweUSSNode("usstest", vscode.TreeItemCollapsibleState.Expanded, null, session, null);
     const mParent = new ZoweUSSNode("parentNode", vscode.TreeItemCollapsibleState.Expanded, null, session, null);
-    ussNode.contextValue = "uss_session";
-    ussNode.fullPath = "/u/myuser";
-    ussNode.mParent = mParent;
-    return ussNode;
+    ussNode1.contextValue = "uss_session";
+    ussNode1.fullPath = "/u/myuser";
+    ussNode1.mParent = mParent;
+    return ussNode1;
 }
 
 function getUSSTree() {
-    const ussNode = getUSSNode();
+    const ussNode1= getUSSNode();
     const USSTree = jest.fn().mockImplementation(() => {
         return {
             mSessionNodes: [],
@@ -49,12 +51,13 @@ function getUSSTree() {
             addSession: mockAddUSSSession,
             refresh: mockUSSRefresh,
             getChildren: mockGetUSSChildren,
+            removeUSSFavorite: mockRemoveUSSFavorite
         };
     });
-    const testUSSTree = USSTree();
-    testUSSTree.mSessionNodes = [];
-    testUSSTree.mSessionNodes.push(ussNode);
-    return testUSSTree;
+    const testUSSTree1 = USSTree();
+    testUSSTree1.mSessionNodes = [];
+    testUSSTree1.mSessionNodes.push(ussNode1);
+    return testUSSTree1;
 }
 
 const session = new brtimperative.Session({
@@ -78,9 +81,11 @@ Object.defineProperty(vscode.window, "showInputBox", { value: showInputBox });
 Object.defineProperty(vscode.window, "showErrorMessage", { value: showErrorMessage });
 Object.defineProperty(vscode.window, "showQuickPick", { value: showQuickPick });
 Object.defineProperty(vscode.workspace, "getConfiguration", { value: getConfiguration });
+Object.defineProperty(vscode.window, "showOpenDialog", {value: showOpenDialog});
+Object.defineProperty(vscode.workspace, "openTextDocument", {value: openTextDocument});
 
 
-describe("ussNodeActions", async () => {
+describe("ussNodeActions", () => {
     beforeEach(() => {
         showErrorMessage.mockReset();
         testUSSTree.refresh.mockReset();
@@ -90,31 +95,39 @@ describe("ussNodeActions", async () => {
     describe("createUSSNode", () => {
         it("createUSSNode is executed successfully", async () => {
             showInputBox.mockReturnValueOnce("USSFolder");
-            await createUSSNode(ussNode, testUSSTree, "file");
+            await ussNodeActions.createUSSNode(ussNode, testUSSTree, "file");
             expect(testUSSTree.refresh).toHaveBeenCalled();
             expect(showErrorMessage.mock.calls.length).toBe(0);
         });
         it("createUSSNode does not execute if node name was not entered", async () => {
             showInputBox.mockReturnValueOnce("");
-            await createUSSNode(ussNode, testUSSTree, "file");
+            await ussNodeActions.createUSSNode(ussNode, testUSSTree, "file");
             expect(testUSSTree.refresh).not.toHaveBeenCalled();
             expect(showErrorMessage.mock.calls.length).toBe(0);
         });
-    })
+        it("should refresh only the child folder", async () => {
+            showInputBox.mockReturnValueOnce("USSFolder");
+            const isTopLevel = false;
+            spyOn(ussNodeActions, "refreshAllUSS");
+            await ussNodeActions.createUSSNode(ussNode, testUSSTree, "folder", isTopLevel);
+            expect(testUSSTree.refresh).toHaveBeenCalled();
+            expect(ussNodeActions.refreshAllUSS).not.toHaveBeenCalled();
+        });
+    });
     describe("deleteUSSNode", () => {
         it("should delete node if user verified", async () => {
             showQuickPick.mockResolvedValueOnce("Yes");
-            await deleteUSSNode(ussNode, testUSSTree, "");
+            await ussNodeActions.deleteUSSNode(ussNode, testUSSTree, "");
             expect(testUSSTree.refresh).toHaveBeenCalled();
         });
         it("should not delete node if user did not verify", async () => {
             showQuickPick.mockResolvedValueOnce("No");
-            await deleteUSSNode(ussNode, testUSSTree, "");
+            await ussNodeActions.deleteUSSNode(ussNode, testUSSTree, "");
             expect(testUSSTree.refresh).not.toHaveBeenCalled();
         });
         it("should not delete node if user cancelled", async () => {
             showQuickPick.mockResolvedValueOnce(undefined);
-            await deleteUSSNode(ussNode, testUSSTree, "");
+            await ussNodeActions.deleteUSSNode(ussNode, testUSSTree, "");
             expect(testUSSTree.refresh).not.toHaveBeenCalled();
         });
     });
@@ -136,17 +149,17 @@ describe("ussNodeActions", async () => {
                 new ZoweUSSNode("/u/myFile.txt", vscode.TreeItemCollapsibleState.None, undefined, null, "", false, "test"),
             ];
 
-            expectedUSSFavorites.map(node => node.contextValue += "f");
-            expectedUSSFavorites.forEach(node => {
-                if (node.contextValue != "directoryf") {
+            expectedUSSFavorites.map((node) => node.contextValue += "f");
+            expectedUSSFavorites.forEach((node) => {
+                if (node.contextValue !== "directoryf") {
                     node.command = { command: "zowe.uss.ZoweUSSNode.open", title: "Open", arguments: [node] };
                 }
-            })
+            });
             expect(testUSSTree.mFavorites).toEqual(expectedUSSFavorites);
-        })
+        });
     });
     describe("renameUSSNode", () => {
-        it('should exit if blank input is provided', () => {
+        it("should exit if blank input is provided", () => {
             showInputBox.mockReturnValueOnce("");
             expect(testUSSTree.refresh).not.toHaveBeenCalled();
             expect(showErrorMessage.mock.calls.length).toBe(0);
@@ -154,10 +167,21 @@ describe("ussNodeActions", async () => {
         });
         it("should execute rename USS file and and refresh the tree", async () => {
             showInputBox.mockReturnValueOnce("new name");
-            await renameUSSNode(ussNode, testUSSTree, "file");
+            await ussNodeActions.renameUSSNode(ussNode, testUSSTree, "file");
             expect(testUSSTree.refresh).toHaveBeenCalled();
             expect(showErrorMessage.mock.calls.length).toBe(0);
             expect(renameUSSFile.mock.calls.length).toBe(1);
+        });
+    });
+    describe("uploadFile", () => {
+        it("should call upload dialog and upload file", async () => {
+            const fileUri = {fsPath: "/tmp/foo"};
+            showOpenDialog.mockReturnValue([fileUri]);
+            openTextDocument.mockReturnValue({});
+            await ussNodeActions.uploadDialog(ussNode, testUSSTree);
+            expect(showOpenDialog).toBeCalled();
+            expect(openTextDocument).toBeCalled();
+            expect(testUSSTree.refresh).toBeCalled();
         });
     });
 });
