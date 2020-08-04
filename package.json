@@ -911,7 +911,7 @@
           "group": "3_modification@2"
         },
         {
-          "when": "view == zowe.profiles.explorer",
+          "when": "view == zowe.profiles.explorer && viewItem == profileTypeNode",
           "command": "zowe.profiles.createProfile",
           "group": "inline"
         }
@@ -1047,10 +1047,6 @@
         },
         {
           "command": "zowe.issueMvsCmd",
-          "when": "never"
-        },
-        {
-          "command": "zowe.profiles.openProfile",
           "when": "never"
         }
       ]

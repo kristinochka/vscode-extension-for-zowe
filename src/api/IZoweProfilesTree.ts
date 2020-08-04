@@ -28,16 +28,19 @@ export class IZoweProfilesTree implements vscode.TreeDataProvider<ProfileTreeNod
     if (!treeNode) {
       const profileTypes = Profiles.getInstance().getAllTypes();
       const typeObjects = profileTypes.map((type) => {
-        const command = {command: "zowe.profiles.createProfile", title: "Create profile", argumants: [type]};
-        const profileTypeNode = new ProfileTreeNode(type, type, undefined, vscode.TreeItemCollapsibleState.Collapsed);
-        profileTypeNode.command = command;
+        const profileTypeNode = new ProfileTreeNode( // change var names for clarity!
+          type,
+          type,
+          undefined,
+          vscode.TreeItemCollapsibleState.Collapsed,
+          "profileTypeNode"
+        );
         return profileTypeNode;
       });
       return Promise.resolve(typeObjects);
     }
     if (treeNode) {
       const listOfProfiles = await Profiles.getInstance().getNamesForType(treeNode.label);
-      // why does rse have default profile?
       const defaultProfileName = await Profiles.getInstance().getDefaultProfile(treeNode.profileType);
       const listOfProfileTypeObj = listOfProfiles.map((profileName) => {
         let nodeLabel = profileName;
@@ -45,8 +48,8 @@ export class IZoweProfilesTree implements vscode.TreeDataProvider<ProfileTreeNod
           nodeLabel = `${nodeLabel} (default)`;
         }
         const profileNode = new ProfileTreeNode(nodeLabel, treeNode.profileType, profileName, vscode.TreeItemCollapsibleState.None);
-        // const command = {command: "zowe.profiles.openProfile", title: "Open", argumants: [profileNode]};
-        // profileNode.command = command;
+        const command = {command: "zowe.profiles.openProfile", title: "Open", argumants: [profileNode]};
+        profileNode.command = command;
         return profileNode;
       });
       return listOfProfileTypeObj;
@@ -68,14 +71,21 @@ export class IZoweProfilesTree implements vscode.TreeDataProvider<ProfileTreeNod
   }
 
   public async createNewProfile() { // repetative code, define return type
-    const profileName = this.getSelectedNode().profileName;
-    if (profileName) {
+    const profileType = this.getSelectedNode().profileType;
+    if (!profileType) {
       return;
     }
-    const profileType = this.getSelectedNode().profileType;
-    const profilePath = await Profiles.getInstance().getProfilePath(profileType, profileName);
-    const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(profilePath));
+    const profileVar = Profiles.getInstance();
+    const sshSchema = await profileVar.getSchema("ssh");
+    const zosmfSchema = await profileVar.getSchema("zosmf");
+    const rseSchema = await profileVar.getSchema("rse");
+    // tslint:disable-next-line: no-console
+    console.log(profileVar, sshSchema, zosmfSchema, rseSchema);
+    const newProfilePath = await Profiles.getInstance().getProfilePath(profileType, "untitled");
+    const newFilePath = vscode.Uri.parse("untitled:" + newProfilePath);
+    const doc = await vscode.workspace.openTextDocument(newFilePath);
     const newDocument = await vscode.window.showTextDocument(doc, 1, false);
+    // make user save-as when they close profile type?
     newDocument.edit((edit) => {
       edit.insert(new vscode.Position(0, 0), "Your advertisement here");
     });
@@ -89,7 +99,9 @@ export class ProfileTreeNode extends vscode.TreeItem { // re-name to something e
     public readonly profileType: string,
     public readonly profileName: string,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+    public readonly contextValue?: string, // make this necessary?
     public command?: vscode.Command
+
   ) {
     super(label, collapsibleState);
   }
