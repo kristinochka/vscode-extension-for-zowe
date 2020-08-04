@@ -469,6 +469,11 @@ export class Profiles {
         return profileType;
     }
 
+    public async getAllProfileTypes(): Promise<string[]> {
+      const profTypes = ZoweExplorerApiRegister.getInstance().registeredApiTypes();
+      return profTypes;
+    }
+
     public async getSchema(profileType: string): Promise<{}> {
         const profileManager = await this.getCliProfileManager(profileType);
         const configOptions = Array.from(profileManager.configurations);
@@ -894,6 +899,11 @@ export class Profiles {
             }
         }
         return profileManager;
+    }
+
+    public async getProfilePath(type: string, name: string): Promise<string> {
+      const profileManger = await this.getCliProfileManager(type);
+      return profileManger.constructFullProfilePath(name, type);
     }
 
     public async validateProfiles(theProfile: IProfileLoaded) {

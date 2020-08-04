@@ -21,6 +21,7 @@ import * as jobActions from "./job/actions";
 import * as sharedActions from "./shared/actions";
 import { moveSync } from "fs-extra";
 import { IZoweDatasetTreeNode, IZoweJobTreeNode, IZoweUSSTreeNode, IZoweTreeNode } from "./api/IZoweTreeNode";
+import { IZoweProfilesTree } from "./api/IZoweProfilesTree";
 import { IZoweTree } from "./api/IZoweTree";
 import { CredentialManagerFactory, ImperativeError, CliProfileManager } from "@zowe/imperative";
 import { DatasetTree, createDatasetTree } from "./dataset/DatasetTree";
@@ -75,6 +76,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<ZoweEx
     let datasetProvider: IZoweTree<IZoweDatasetTreeNode>;
     let ussFileProvider: IZoweTree<IZoweUSSTreeNode>;
     let jobsProvider: IZoweTree<IZoweJobTreeNode>;
+    let profilesProvider: IZoweProfilesTree;
 
     try {
         globals.initLogger(context);
@@ -112,6 +114,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<ZoweEx
         ussFileProvider = await createUSSTree(globals.LOG);
         // Initialize Jobs provider with the created session and the selected pattern
         jobsProvider = await createJobsTree(globals.LOG);
+        // Initialize Profiles section
+        profilesProvider = new IZoweProfilesTree(); // should this be called IZowe? Should await be here?
+
     } catch (err) {
         await errorHandling(err, null, (localize("initialize.log.error", "Error encountered while activating and initializing logger! ")));
         globals.LOG.error(localize("initialize.log.error",
@@ -143,6 +148,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<ZoweEx
     }
     if (jobsProvider) {
         initJobsProvider(context, jobsProvider);
+    }
+    if (profilesProvider) {
+      initProfilesProvider(context, profilesProvider);
     }
     if (datasetProvider || ussFileProvider) {
         vscode.commands.registerCommand("zowe.openRecentMember", () => sharedActions.openRecentMemberPrompt(datasetProvider, ussFileProvider));
@@ -281,6 +289,15 @@ function initJobsProvider(context: vscode.ExtensionContext, jobsProvider: IZoweT
     });
 
     initSubscribers(context, jobsProvider);
+}
+
+function initProfilesProvider(context: vscode.ExtensionContext, profilesProvider: IZoweProfilesTree) {
+  // initSubscribers(context, profilesProvider); // change initSubscribers??
+  vscode.commands.registerCommand("zowe.profiles.openProfile", async () => profilesProvider.openProfileFile());
+  // register command here
+  vscode.commands.registerCommand("zowe.profiles.createProfile", async () => profilesProvider.createNewProfile());
+  const theTreeView = profilesProvider.getTreeView(); // what's wrong here?
+  context.subscriptions.push(theTreeView);
 }
 
 function initSubscribers(context: vscode.ExtensionContext, theProvider: IZoweTree<IZoweTreeNode>) {

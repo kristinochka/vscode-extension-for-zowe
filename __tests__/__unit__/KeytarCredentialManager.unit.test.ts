@@ -71,7 +71,7 @@ describe("KeytarCredentialManager Unit Tests", () => {
         let secret;
         let error;
         try {
-            secret = await credentialMgr.load("user5", false);
+            secret = await credentialMgr.load("user5");
         } catch (err) {
             error = err;
         }
@@ -84,7 +84,7 @@ describe("KeytarCredentialManager Unit Tests", () => {
         let secret;
         let error;
         try {
-            secret = await credentialMgr.load("user5", true);
+            secret = await credentialMgr.load("user5");
         } catch (err) {
             error = err;
         }

@@ -55,6 +55,10 @@
         {
           "id": "zowe.jobs",
           "name": "%zowe.jobs%"
+        },
+        {
+          "id": "zowe.profiles.explorer",
+          "name": "Profiles"
         }
       ]
     },
@@ -474,6 +478,14 @@
           "light": "./resources/light/pattern.svg",
           "dark": "./resources/dark/pattern.svg"
         }
+      },
+      {
+        "command": "zowe.profiles.createProfile",
+        "title": "Create profile",
+        "icon": {
+            "light": "./resources/light/plus.svg",
+            "dark": "./resources/dark/plus.svg"
+          }
       }
     ],
     "menus": {
@@ -897,6 +909,11 @@
           "when": "view == zowe.jobs && viewItem =~ /^(?!.*_fav.*)server.*/",
           "command": "zowe.jobs.deleteProfile",
           "group": "3_modification@2"
+        },
+        {
+          "when": "view == zowe.profiles.explorer",
+          "command": "zowe.profiles.createProfile",
+          "group": "inline"
         }
       ],
       "commandPalette": [
@@ -1030,6 +1047,10 @@
         },
         {
           "command": "zowe.issueMvsCmd",
+          "when": "never"
+        },
+        {
+          "command": "zowe.profiles.openProfile",
           "when": "never"
         }
       ]
