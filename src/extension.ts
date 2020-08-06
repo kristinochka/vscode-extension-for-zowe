@@ -21,7 +21,7 @@ import * as jobActions from "./job/actions";
 import * as sharedActions from "./shared/actions";
 import { moveSync } from "fs-extra";
 import { IZoweDatasetTreeNode, IZoweJobTreeNode, IZoweUSSTreeNode, IZoweTreeNode } from "./api/IZoweTreeNode";
-import { IZoweProfilesTree } from "./api/IZoweProfilesTree";
+import { IZoweProfilesTree, ProfileTreeNode } from "./api/IZoweProfilesTree";
 import { IZoweTree } from "./api/IZoweTree";
 import { CredentialManagerFactory, ImperativeError, CliProfileManager } from "@zowe/imperative";
 import { DatasetTree, createDatasetTree } from "./dataset/DatasetTree";
@@ -295,7 +295,7 @@ function initProfilesProvider(context: vscode.ExtensionContext, profilesProvider
   // initSubscribers(context, profilesProvider); // change initSubscribers??
   vscode.commands.registerCommand("zowe.profiles.openProfile", async () => profilesProvider.openProfileFile());
   // register command here
-  vscode.commands.registerCommand("zowe.profiles.createProfile", async () => profilesProvider.createNewProfile());
+  vscode.commands.registerCommand("zowe.profiles.createProfile", async (node: ProfileTreeNode) => profilesProvider.createNewProfile(node));
   const theTreeView = profilesProvider.getTreeView(); // what's wrong here?
   context.subscriptions.push(theTreeView);
 }

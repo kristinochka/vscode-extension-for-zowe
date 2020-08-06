@@ -60,8 +60,9 @@ export class IZoweProfilesTree implements vscode.TreeDataProvider<ProfileTreeNod
     }
   }
   public async openProfileFile(): Promise<vscode.TextEditor> {
-    const profileName = this.getSelectedNode().profileName;
-    const profileType = this.getSelectedNode().profileType;
+    const selectedNode = this.getSelectedNode();
+    const profileName = selectedNode.profileName;
+    const profileType = selectedNode.profileType;
     if (!profileName) {
       return;
     }
@@ -74,11 +75,7 @@ export class IZoweProfilesTree implements vscode.TreeDataProvider<ProfileTreeNod
     return this.treeView.selection && this.treeView.selection[0];
   }
 
-  public async createNewProfile(): Promise<boolean> {
-    const selectedNode = this.getSelectedNode();
-    if (!selectedNode) {
-      throw new Error("Cannot find selected node");
-    }
+  public async createNewProfile(selectedNode: ProfileTreeNode): Promise<boolean> {
     const profileType = selectedNode.profileType;
     const profileSchema = await Profiles.getInstance().getSchema(profileType);
     const newProfileName = await vscode.window.showInputBox({
