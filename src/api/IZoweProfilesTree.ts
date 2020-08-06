@@ -10,7 +10,11 @@
 */
 
 import * as vscode from "vscode";
+import * as nls from "vscode-nls";
 import { Profiles } from "../Profiles";
+
+nls.config({ messageFormat: nls.MessageFormat.bundle, bundleFormat: nls.BundleFormat.standalone })();
+const localize: nls.LocalizeFunc = nls.loadMessageBundle();
 
 export class IZoweProfilesTree implements vscode.TreeDataProvider<ProfileTreeNode> {
   private treeView: vscode.TreeView<ProfileTreeNode>;
@@ -55,7 +59,7 @@ export class IZoweProfilesTree implements vscode.TreeDataProvider<ProfileTreeNod
       return listOfProfileTypeObj;
     }
   }
-  public async openProfileFile() {
+  public async openProfileFile(): Promise<vscode.TextEditor> {
     const profileName = this.getSelectedNode().profileName;
     const profileType = this.getSelectedNode().profileType;
     if (!profileName) {
@@ -63,31 +67,43 @@ export class IZoweProfilesTree implements vscode.TreeDataProvider<ProfileTreeNod
     }
     const profilePath = await Profiles.getInstance().getProfilePath(profileType, profileName);
     const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(profilePath));
-    vscode.window.showTextDocument(doc, 1, false);
+    return vscode.window.showTextDocument(doc, 1, false);
   }
 
   public getSelectedNode(): ProfileTreeNode {
-    return this.treeView.selection[0];
+    return this.treeView.selection && this.treeView.selection[0];
   }
 
-  public async createNewProfile() { // repetative code, define return type
-    const profileType = this.getSelectedNode().profileType;
-    if (!profileType) {
-      return;
+  public async createNewProfile(): Promise<boolean> {
+    const selectedNode = this.getSelectedNode();
+    if (!selectedNode) {
+      throw new Error("Cannot find selected node");
     }
-    const profileVar = Profiles.getInstance();
-    const sshSchema = await profileVar.getSchema("ssh");
-    const zosmfSchema = await profileVar.getSchema("zosmf");
-    const rseSchema = await profileVar.getSchema("rse");
-    // tslint:disable-next-line: no-console
-    console.log(profileVar, sshSchema, zosmfSchema, rseSchema);
-    const newProfilePath = await Profiles.getInstance().getProfilePath(profileType, "untitled");
+    const profileType = selectedNode.profileType;
+    const profileSchema = await Profiles.getInstance().getSchema(profileType);
+    const newProfileName = await vscode.window.showInputBox({
+      placeHolder:
+          localize("createProfileTreeNode.name", "Enter profile name")
+    });
+    if (!newProfileName) {
+      return undefined;
+    }
+    const newProfilePath = await Profiles.getInstance().getProfilePath(profileType, newProfileName);
     const newFilePath = vscode.Uri.parse("untitled:" + newProfilePath);
     const doc = await vscode.workspace.openTextDocument(newFilePath);
     const newDocument = await vscode.window.showTextDocument(doc, 1, false);
-    // make user save-as when they close profile type?
-    newDocument.edit((edit) => {
-      edit.insert(new vscode.Position(0, 0), "Your advertisement here");
+    const profileTemplateText = this.createProfileTemplate(profileSchema);
+    return newDocument.edit((edit) => {
+      edit.insert(new vscode.Position(0, 0), profileTemplateText);
+    });
+  }
+
+  private createProfileTemplate(profileSchema: any): string {
+    // it combines the 1st 2 words
+    const profileKeys = Object.keys(profileSchema);
+    return profileKeys.reduce((accumulator, currentValue) => {
+      const currentLine = currentValue + ":" + "\n";
+      return accumulator + currentLine;
     });
   }
 }
