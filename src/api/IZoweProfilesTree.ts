@@ -16,8 +16,13 @@ import { Profiles } from "../Profiles";
 nls.config({ messageFormat: nls.MessageFormat.bundle, bundleFormat: nls.BundleFormat.standalone })();
 const localize: nls.LocalizeFunc = nls.loadMessageBundle();
 
+// tslint:disable: no-console
+// TO-DO: Localization!
 export class IZoweProfilesTree implements vscode.TreeDataProvider<ProfileTreeNode> {
+  public mOnDidChangeTreeData: vscode.EventEmitter<ProfileTreeNode | undefined> = new vscode.EventEmitter<ProfileTreeNode | undefined>();
+  public readonly onDidChangeTreeData: vscode.Event<ProfileTreeNode | undefined> = this.mOnDidChangeTreeData.event;
   private treeView: vscode.TreeView<ProfileTreeNode>;
+
   constructor() {
     this.treeView = vscode.window.createTreeView("zowe.profiles.explorer", {treeDataProvider: this});
   }
@@ -25,40 +30,42 @@ export class IZoweProfilesTree implements vscode.TreeDataProvider<ProfileTreeNod
   public getTreeView(): vscode.TreeView<ProfileTreeNode> {
     return this.treeView;
   }
-  public getTreeItem(element: ProfileTreeNode): vscode.TreeItem {
-    return element;
+
+  public getTreeItem(treeNode: ProfileTreeNode): vscode.TreeItem {
+    return treeNode;
   }
+
   public async getChildren(treeNode?: ProfileTreeNode): Promise<ProfileTreeNode[]> {
     if (!treeNode) {
       const profileTypes = Profiles.getInstance().getAllTypes();
-      const typeObjects = profileTypes.map((type) => {
-        const profileTypeNode = new ProfileTreeNode( // change var names for clarity!
-          type,
-          type,
+      return profileTypes.map((profileType) => {
+        return new ProfileTreeNode(
+          profileType,
+          profileType,
           undefined,
           vscode.TreeItemCollapsibleState.Collapsed,
           "profileTypeNode"
         );
-        return profileTypeNode;
       });
-      return Promise.resolve(typeObjects);
     }
     if (treeNode) {
-      const listOfProfiles = await Profiles.getInstance().getNamesForType(treeNode.label);
-      const defaultProfileName = await Profiles.getInstance().getDefaultProfile(treeNode.profileType);
+      const { profileType } = treeNode;
+      const listOfProfiles = await Profiles.getInstance().getNamesForType(profileType);
+      const defaultProfileName = await Profiles.getInstance().getDefaultProfile(profileType);
       const listOfProfileTypeObj = listOfProfiles.map((profileName) => {
         let nodeLabel = profileName;
         if (profileName === (defaultProfileName && defaultProfileName.name)) { // why doesn't ProfileName.!name
           nodeLabel = `${nodeLabel} (default)`;
         }
-        const profileNode = new ProfileTreeNode(nodeLabel, treeNode.profileType, profileName, vscode.TreeItemCollapsibleState.None);
-        const command = {command: "zowe.profiles.openProfile", title: "Open", argumants: [profileNode]};
-        profileNode.command = command;
-        return profileNode;
+        const profileTreeNode = new ProfileTreeNode(nodeLabel, profileType, profileName, vscode.TreeItemCollapsibleState.None);
+        const command = {command: "zowe.profiles.openProfile", title: "Open", argumants: [profileTreeNode]};
+        profileTreeNode.command = command;
+        return profileTreeNode;
       });
       return listOfProfileTypeObj;
     }
   }
+
   public async openProfileFile(): Promise<vscode.TextEditor> {
     const selectedNode = this.getSelectedNode();
     const profileName = selectedNode.profileName;
@@ -78,6 +85,7 @@ export class IZoweProfilesTree implements vscode.TreeDataProvider<ProfileTreeNod
   public async createNewProfile(selectedNode: ProfileTreeNode): Promise<boolean> {
     const profileType = selectedNode.profileType;
     const profileSchema = await Profiles.getInstance().getSchema(profileType);
+    // TODO: should we validate input?
     const newProfileName = await vscode.window.showInputBox({
       placeHolder:
           localize("createProfileTreeNode.name", "Enter profile name")
@@ -90,30 +98,41 @@ export class IZoweProfilesTree implements vscode.TreeDataProvider<ProfileTreeNod
     const doc = await vscode.workspace.openTextDocument(newFilePath);
     const newDocument = await vscode.window.showTextDocument(doc, 1, false);
     const profileTemplateText = this.createProfileTemplate(profileSchema);
-    return newDocument.edit((edit) => {
+    newDocument.edit((edit) => {
       edit.insert(new vscode.Position(0, 0), profileTemplateText);
     });
+    vscode.workspace.onDidSaveTextDocument((document: vscode.TextDocument) => {
+      if (document.uri.fsPath === newProfilePath) {
+        console.log("refreshing stuff!");
+        this.refreshElement(selectedNode);
+      }
+  });
+    // TODO: after saving, if no default profiles exist, set new one to be default
   }
 
+  public refreshElement(treeNode: ProfileTreeNode): void {
+    treeNode.dirty = true;
+    this.mOnDidChangeTreeData.fire(treeNode);
+}
+
   private createProfileTemplate(profileSchema: any): string {
-    // it combines the 1st 2 words
+    const separator = ":\n";
     const profileKeys = Object.keys(profileSchema);
-    return profileKeys.reduce((accumulator, currentValue) => {
-      const currentLine = currentValue + ":" + "\n";
-      return accumulator + currentLine;
-    });
+    const stringProfileKeys = profileKeys.join(separator);
+    return stringProfileKeys.concat(separator);
   }
 }
 
 // tslint:disable-next-line: max-classes-per-file
-export class ProfileTreeNode extends vscode.TreeItem { // re-name to something else
+export class ProfileTreeNode extends vscode.TreeItem {
   constructor(
     public readonly label: string,
     public readonly profileType: string,
     public readonly profileName: string,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
     public readonly contextValue?: string, // make this necessary?
-    public command?: vscode.Command
+    public command?: vscode.Command,
+    public dirty?: boolean
 
   ) {
     super(label, collapsibleState);
